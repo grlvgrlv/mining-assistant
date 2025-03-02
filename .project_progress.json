@@ -20,7 +20,7 @@
         "name": "PostgreSQL Database Setup",
         "status": "completed",
         "priority": "high",
-        "last_updated": "2025-03-02T01:43:02.617269"
+        "last_updated": "2025-03-02T12:52:05.913275"
       }
     ],
     "weight": 0.15
@@ -29,13 +29,15 @@
     "steps": [
       {
         "name": "FastAPI Setup",
-        "status": "pending",
-        "priority": "high"
+        "status": "in_progress",
+        "priority": "high",
+        "last_updated": "2025-03-02T12:52:05.725557"
       },
       {
         "name": "Database Models",
-        "status": "pending",
-        "priority": "medium"
+        "status": "in_progress",
+        "priority": "medium",
+        "last_updated": "2025-03-02T12:52:05.730152"
       },
       {
         "name": "Mining Connectors",
@@ -54,8 +56,9 @@
     "steps": [
       {
         "name": "Base Model Download",
-        "status": "in_progress",
-        "priority": "high"
+        "status": "completed",
+        "priority": "high",
+        "last_updated": "2025-03-02T12:52:05.725269"
       },
       {
         "name": "CUDA Compatibility Check",
