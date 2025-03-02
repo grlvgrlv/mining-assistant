@@ -55,10 +55,6 @@ def collect_code(root_dir, output_file, log_file, processed_file, missing_file, 
         
         for file in files:
             file_path = os.path.join(root, file)
-            # Πλήρης αποκλεισμός του συγκεκριμένου αρχείου
-            if file_path == "/home/grlv/mining-assistant/alembic/script.py.mako":
-                continue
-            
             if not any(excluded in file for excluded in excluded_files):
                 all_files.add(file_path)
     
@@ -84,10 +80,6 @@ def collect_code(root_dir, output_file, log_file, processed_file, missing_file, 
         for file_path in sorted(all_files):
             root = os.path.dirname(file_path)
             file = os.path.basename(file_path)
-
-            # Αποκλεισμός συγκεκριμένου αρχείου
-            if file_path == "/home/grlv/mining-assistant/alembic/script.py.mako":
-                continue
 
             # Παράλειψη των αρχείων εξόδου
             if file_path in {output_file, log_file, processed_file, missing_file, json_file}:

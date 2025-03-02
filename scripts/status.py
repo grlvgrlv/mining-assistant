@@ -1,5 +1,23 @@
 #!/usr/bin/env python3
+"""
+Εργαλείο Παρακολούθησης Προόδου Έργου για το AI Mining Assistant
 
+Το παρόν script παρέχει μια ολοκληρωμένη επισκόπηση της προόδου του έργου, 
+συλλέγοντας και αναλύοντας πληροφορίες από διάφορες πηγές όπως:
+- Institutional Memory (ιστορικό αρχείων και εξέλιξης του project)
+- Diagnostic Reports (αναφορές συστημικών ελέγχων)
+- Αρχεία προόδου και διαμόρφωσης του συστήματος
+
+Κύριες λειτουργίες:
+1. Καταγραφή και παρακολούθηση της προόδου κάθε φάσης του έργου
+2. Υπολογισμός συνολικής προόδου σε ποσοστό
+3. Ανάλυση μετρικών υλοποίησης (π.χ. αριθμός αρχείων, πακέτων)
+4. Εντοπισμός των επόμενων σημαντικών βημάτων
+5. Επαλήθευση διαμόρφωσης συστημάτων (π.χ. PostgreSQL)
+
+Παρέχει λεπτομερή απεικόνιση της κατάστασης του project με χρωματιστή εκτύπωση
+και δυνατότητα αποθήκευσης της προόδου σε αρχείο JSON.
+"""
 import os
 import json
 import sys
@@ -8,11 +26,30 @@ from datetime import datetime
 
 class ProjectProgressTracker:
     def __init__(self, project_base_path):
+        print(f"Εκκίνηση του status.py...")
+        print(f"Project base path: {project_base_path}")
+        
         self.project_base_path = project_base_path
-        self.progress_file = os.path.join(project_base_path, '.project_progress.json')
+        
+        # Δημιουργία και έλεγχος του φακέλου logs
         self.logs_dir = os.path.join(project_base_path, 'logs')
+        try:
+            os.makedirs(self.logs_dir, exist_ok=True)
+            print(f"Logs directory: {self.logs_dir}")
+        except Exception as e:
+            print(f"Σφάλμα δημιουργίας logs directory: {e}")
+            self.logs_dir = project_base_path
+            print(f"Χρήση project directory ως logs: {self.logs_dir}")
+        
+        # Αποθήκευση του progress file στο logs dir αντί για το project base
+        self.progress_file = os.path.join(self.logs_dir, '.project_progress.json')
+        print(f"Progress file: {self.progress_file}")
+        
+        # Φόρτωση institutional memory και diagnostic report
         self.institutional_memory = self.find_latest_institutional_memory()
         self.diagnostic_report = self.find_latest_diagnostic_report()
+        
+        # Φάσεις του έργου
         self.phases = {
             "Infrastructure Setup": {
                 "steps": [
@@ -72,6 +109,7 @@ class ProjectProgressTracker:
         """Εύρεση του πιο πρόσφατου optimized institutional memory αρχείου"""
         try:
             if not os.path.exists(self.logs_dir):
+                print("Δεν υπάρχει φάκελος logs")
                 return None
                 
             # Αναζήτηση αρχείων optimized
@@ -81,6 +119,7 @@ class ProjectProgressTracker:
                 # Αν δεν υπάρχουν optimized, ψάχνουμε κανονικά institutional memory αρχεία
                 regular_files = glob.glob(os.path.join(self.logs_dir, "institutional_memory_*.json"))
                 if not regular_files:
+                    print("Δεν βρέθηκαν institutional memory αρχεία")
                     return None
                 optimized_files = regular_files
             
@@ -99,11 +138,16 @@ class ProjectProgressTracker:
     def find_latest_diagnostic_report(self):
         """Εύρεση του πιο πρόσφατου αρχείου diagnostic report"""
         try:
-            # Αναζήτηση στο current directory και στο logs directory
-            diagnostic_files = glob.glob("diagnostic_report_*.json") + \
-                              glob.glob(os.path.join(self.logs_dir, "diagnostic_report_*.json"))
+            # Αναζήτηση μόνο στο logs directory
+            diagnostic_files = glob.glob(os.path.join(self.logs_dir, "diagnostic_report_*.json"))
+            
+            # Συμπεριλαμβάνουμε το system_check_results.json στην αναζήτηση
+            system_check_file = os.path.join(self.logs_dir, "system_check_results.json")
+            if os.path.exists(system_check_file):
+                diagnostic_files.append(system_check_file)
             
             if not diagnostic_files:
+                print("Δεν βρέθηκαν diagnostic report αρχεία")
                 return None
                 
             # Ταξινόμηση με βάση την ημερομηνία τροποποίησης (πιο πρόσφατα πρώτα)
@@ -121,6 +165,7 @@ class ProjectProgressTracker:
     def analyze_institutional_memory(self):
         """Ανάλυση του institutional memory για εύρεση δεικτών προόδου"""
         if not self.institutional_memory:
+            print("Δεν υπάρχει institutional memory για ανάλυση")
             return
             
         # Μετρικές που θα συλλέξουμε
@@ -438,25 +483,39 @@ class ProjectProgressTracker:
             try:
                 with open(self.progress_file, 'r') as f:
                     saved_progress = json.load(f)
+                    print(f"Φορτώθηκε το αρχείο προόδου από: {self.progress_file}")
                     # Update existing progress structure
                     for phase, phase_data in saved_progress.items():
                         if phase in self.phases:
                             self.phases[phase] = phase_data
-            except (json.JSONDecodeError, IOError):
-                print("Warning: Unable to load existing progress file.")
+            except (json.JSONDecodeError, IOError) as e:
+                print(f"Προειδοποίηση: Δεν ήταν δυνατή η φόρτωση του αρχείου προόδου. Σφάλμα: {e}")
+        else:
+            print(f"Το αρχείο προόδου δεν υπάρχει ακόμα: {self.progress_file}")
+            self.save_progress()  # Δημιουργία του αρχείου
 
     def save_progress(self):
         try:
             with open(self.progress_file, 'w') as f:
                 json.dump(self.phases, f, indent=2)
-        except IOError:
-            print("Error: Unable to save progress file.")
+                print(f"Η πρόοδος αποθηκεύτηκε επιτυχώς στο: {self.progress_file}")
+        except IOError as e:
+            print(f"Σφάλμα: Αδυναμία αποθήκευσης αρχείου προόδου: {e}")
+            # Προσπάθεια αποθήκευσης στο project base path ως fallback
+            fallback_file = os.path.join(self.project_base_path, '.project_progress.json')
+            try:
+                with open(fallback_file, 'w') as f:
+                    json.dump(self.phases, f, indent=2)
+                print(f"Η πρόοδος αποθηκεύτηκε στο fallback path: {fallback_file}")
+            except IOError as e2:
+                print(f"Κρίσιμο σφάλμα: Αδυναμία αποθήκευσης και στο fallback path: {e2}")
 
     def update_step_status(self, phase, step_name, status):
         for step in self.phases[phase]["steps"]:
             if step["name"] == step_name:
                 step["status"] = status
                 step["last_updated"] = datetime.now().isoformat()
+                print(f"Ενημερώθηκε το βήμα '{step_name}' σε κατάσταση '{status}'")
                 break
         self.save_progress()
 
@@ -501,9 +560,15 @@ class ProjectProgressTracker:
             backend_path = os.path.join(self.project_base_path, 'backend')
             sys.path.append(self.project_base_path)
             sys.path.append(backend_path)
+            print(f"Backend path: {backend_path}")
 
             # Εισαγωγή των models
-            from backend.models import Base, User, MiningConfig, MiningStat, EnergyConsumption, CryptoPrice
+            try:
+                from backend.models import Base, User, MiningConfig, MiningStat, EnergyConsumption, CryptoPrice
+                print("Models εισήχθησαν επιτυχώς")
+            except ImportError as e:
+                print(f"Σφάλμα εισαγωγής models: {e}")
+                return False
 
             # Λήψη URL βάσης δεδομένων
             DATABASE_URL = os.getenv("DATABASE_URL")
@@ -513,37 +578,60 @@ class ProjectProgressTracker:
                 return False
 
             # Δημιουργία engine
-            engine = create_engine(DATABASE_URL)
+            try:
+                engine = create_engine(DATABASE_URL)
+                print(f"Engine δημιουργήθηκε: {DATABASE_URL.replace(':password@', ':***@')}")
+            except Exception as e:
+                print(f"Σφάλμα δημιουργίας engine: {e}")
+                return False
             
             # Δημιουργία session
-            SessionLocal = sessionmaker(bind=engine)
-            session = SessionLocal()
+            try:
+                SessionLocal = sessionmaker(bind=engine)
+                session = SessionLocal()
+                print("Session δημιουργήθηκε")
+            except Exception as e:
+                print(f"Σφάλμα δημιουργίας session: {e}")
+                return False
 
             # Έλεγχος ύπαρξης πινάκων
-            inspector = inspect(engine)
-            required_tables = [
-                'users', 
-                'mining_configs', 
-                'mining_stats', 
-                'energy_consumption', 
-                'crypto_prices',
-                'alembic_version'
-            ]
-            
-            # Έλεγχος όλων των απαιτούμενων πινάκων
-            missing_tables = [
-                table for table in required_tables 
-                if table not in inspector.get_table_names()
-            ]
-            
-            if missing_tables:
-                print(f"Λείπουν πίνακες: {missing_tables}")
-                session.close()
+            try:
+                inspector = inspect(engine)
+                tables = inspector.get_table_names()
+                print(f"Πίνακες που βρέθηκαν: {tables}")
+                
+                required_tables = [
+                    'users', 
+                    'mining_configs', 
+                    'mining_stats', 
+                    'energy_consumption', 
+                    'crypto_prices',
+                    'alembic_version'
+                ]
+                
+                # Έλεγχος όλων των απαιτούμενων πινάκων
+                missing_tables = [
+                    table for table in required_tables 
+                    if table not in tables
+                ]
+                
+                if missing_tables:
+                    print(f"Λείπουν πίνακες: {missing_tables}")
+                    session.close()
+                    return False
+            except Exception as e:
+                print(f"Σφάλμα ελέγχου πινάκων: {e}")
                 return False
 
             # Έλεγχος εγγραφών σε βασικούς πίνακες
-            user_count = session.query(User).count()
-            mining_config_count = session.query(MiningConfig).count()
+            try:
+                user_count = session.query(User).count()
+                mining_config_count = session.query(MiningConfig).count()
+                print(f"Users: {user_count}, Mining Configs: {mining_config_count}")
+            except Exception as e:
+                print(f"Σφάλμα ελέγχου εγγραφών: {e}")
+                session.close()
+                return False
             
             # Κλείσιμο της σύνδεσης
             session.close()
@@ -553,6 +641,7 @@ class ProjectProgressTracker:
                 print("Δεν υπάρχουν δεδομένα στους βασικούς πίνακες")
                 return False
 
+            print("Η επαλήθευση της PostgreSQL ολοκληρώθηκε επιτυχώς")
             return True
 
         except Exception as e:
@@ -658,9 +747,26 @@ class ProjectProgressTracker:
                 print(f"➡️ {step}")
         else:
             print("🎉 All high-priority tasks are in progress or completed!")
+        
+        print("Τέλος εκτέλεσης status.py")
 
 def main():
-    project_base_path = os.path.expanduser("~/mining-assistant")
+    # Βρίσκουμε την διαδρομή του script
+    script_path = os.path.abspath(__file__)
+    script_dir = os.path.dirname(script_path)
+    
+    # Υπολογίζουμε το project_base_path
+    if os.path.basename(script_dir) == "scripts":
+        # Αν το script είναι στον φάκελο scripts, το project_base_path είναι ο γονικός φάκελος
+        project_base_path = os.path.dirname(script_dir)
+    else:
+        # Αλλιώς, υποθέτουμε ότι το script είναι στο project root
+        project_base_path = os.path.expanduser("~/mining-assistant")
+    
+    print(f"Script path: {script_path}")
+    print(f"Script directory: {script_dir}")
+    print(f"Project base path: {project_base_path}")
+    
     tracker = ProjectProgressTracker(project_base_path)
     
     # Έλεγχος PostgreSQL setup

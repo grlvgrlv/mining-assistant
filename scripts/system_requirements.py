@@ -1,5 +1,29 @@
 #!/usr/bin/env python3
+"""
+Εργαλείο Ελέγχου Συστημικών Απαιτήσεων για το AI Mining Assistant
 
+Το script πραγματοποιεί έναν ολοκληρωμένο έλεγχο των προαπαιτούμενων συστήματος 
+για την εγκατάσταση και λειτουργία του AI Mining Assistant. 
+
+Βασικοί έλεγχοι:
+1. Έκδοση Python (απαίτηση: 3.9+)
+2. Διαθέσιμη RAM (απαίτηση: 16GB+)
+3. GPU και CUDA συμβατότητα (απαίτηση: NVIDIA GPU με 6GB+ VRAM, CUDA 11.7+)
+4. Έκδοση Node.js (απαίτηση: 16+)
+5. Διαθέσιμος χώρος δίσκου (απαίτηση: 20GB+)
+6. Εγκατεστημένα Python πακέτα
+
+Επιπλέον λειτουργίες:
+- Χρωματιστή εκτύπωση αποτελεσμάτων ελέγχου
+- Δυνατότητα αυτόματης εγκατάστασης λειπόντων πακέτων
+- Αποθήκευση αποτελεσμάτων σε JSON για περαιτέρω ανάλυση
+
+Χρήση:
+- Με το όρισμα 'check': Έλεγχος συστημικών απαιτήσεων
+- Με το όρισμα 'install': Αυτόματη εγκατάσταση λειπόντων πακέτων
+"""
+
+# Υπόλοιπος κώδικας παραμένει ο ίδιος
 import sys
 import platform
 import subprocess
@@ -215,11 +239,39 @@ def install_missing_packages(packages: List[str]) -> bool:
         return False
 
 def main():
+    print("Εκκίνηση του system_requirements.py...")
     parser = argparse.ArgumentParser(description="Έλεγχος προαπαιτούμενων συστήματος για το AI Mining Assistant")
     parser.add_argument('action', choices=['check', 'install'], nargs='?', default='check',
                         help="'check' για έλεγχο προαπαιτούμενων, 'install' για εγκατάσταση των πακέτων που λείπουν")
     
     args = parser.parse_args()
+    
+    # Ορισμός των διαδρομών με διαχείριση σφαλμάτων
+    try:
+        script_path = os.path.abspath(__file__)
+        print(f"Script path: {script_path}")
+        
+        script_dir = os.path.dirname(script_path)
+        print(f"Script directory: {script_dir}")
+        
+        project_base_path = os.path.dirname(script_dir) if os.path.basename(script_dir) == "scripts" else os.path.dirname(os.path.dirname(script_path))
+        print(f"Project base path: {project_base_path}")
+        
+        logs_dir = os.path.join(project_base_path, "logs")
+        print(f"Logs directory: {logs_dir}")
+
+        # Δημιουργία του καταλόγου logs αν δεν υπάρχει
+        try:
+            os.makedirs(logs_dir, exist_ok=True)
+            print(f"Logs directory created/exists: {logs_dir}")
+        except Exception as e:
+            print(f"Σφάλμα δημιουργίας logs directory: {e}")
+            logs_dir = os.getcwd()  # Fallback στο τρέχον directory
+            print(f"Χρήση τρέχοντος καταλόγου: {logs_dir}")
+    except Exception as e:
+        print(f"Σφάλμα υπολογισμού διαδρομών: {e}")
+        logs_dir = os.getcwd()  # Fallback στο τρέχον directory
+        print(f"Χρήση τρέχοντος καταλόγου: {logs_dir}")
     
     print(ColorPrint.bold("\n=== Έλεγχος Προαπαιτούμενων Συστήματος ===\n"))
     
@@ -303,11 +355,25 @@ def main():
         "all_requirements_met": all_ok
     }
     
-    with open('system_check_results.json', 'w') as f:
-        json.dump(results, f, indent=2)
+    # Αποθήκευση αρχείου με διαχείριση σφαλμάτων
+    try:
+        # Αποθήκευση στο φάκελο logs
+        output_file = os.path.join(logs_dir, 'system_check_results.json')
+        with open(output_file, 'w') as f:
+            json.dump(results, f, indent=2)
+        print(f"\nΤα αποτελέσματα του ελέγχου αποθηκεύτηκαν στο αρχείο '{output_file}'")
+    except Exception as e:
+        print(f"Σφάλμα αποθήκευσης αρχείου στο logs: {e}")
+        try:
+            # Fallback στο τρέχον directory
+            output_file = 'system_check_results.json'
+            with open(output_file, 'w') as f:
+                json.dump(results, f, indent=2)
+            print(f"\nΤα αποτελέσματα του ελέγχου αποθηκεύτηκαν στο αρχείο '{output_file}'")
+        except Exception as e2:
+            print(f"Σφάλμα αποθήκευσης και στο τρέχον directory: {e2}")
     
-    print(f"\nΤα αποτελέσματα του ελέγχου αποθηκεύτηκαν στο αρχείο 'system_check_results.json'")
-    
+    print("Τέλος εκτέλεσης system_requirements.py")
     return 0 if all_ok else 1
 
 if __name__ == "__main__":

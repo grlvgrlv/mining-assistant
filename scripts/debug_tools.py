@@ -150,6 +150,10 @@ def check_database():
     try:
         sys.path.append(os.getcwd())
         
+        # Προσθήκη του project base path στο sys.path
+        project_base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+        sys.path.append(project_base_path)
+        
         # Προσπάθεια εισαγωγής του database module
         start_time = time.time()
         from backend.database import check_db_connection, engine
@@ -203,7 +207,9 @@ def check_modules_import():
         "backend.connectors.cloreai_connector"
     ]
     
-    sys.path.append(os.getcwd())
+    # Προσθήκη του project base path στο sys.path
+    project_base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    sys.path.append(project_base_path)
     
     for module_name in important_modules:
         try:
@@ -249,6 +255,11 @@ def main():
     print(f"Τρέχων φάκελος: {os.getcwd()}")
     print("=" * 45 + "\n")
     
+    # Ορισμός των διαδρομών
+    project_base_path = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    logs_dir = os.path.join(project_base_path, "logs")
+    os.makedirs(logs_dir, exist_ok=True)
+    
     # Έλεγχος παραμέτρων γραμμής εντολών
     command = "all"
     if len(sys.argv) > 1:
@@ -274,15 +285,15 @@ def main():
         print()
         
     if command in ["files", "all"]:
-        report["files"] = list_project_files()
+        report["files"] = list_project_files(project_base_path)
         print()
     
     # Αποθήκευση αναφοράς
-    output_file = f"diagnostic_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    output_file = os.path.join(logs_dir, f"diagnostic_report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
     with open(output_file, "w") as f:
         json.dump(report, f, indent=2)
     
-    print(f"\n📝 Αναφορά διάγνωσης αποθηκεύτηκε στο: {os.path.abspath(output_file)}")
+    print(f"\n📝 Αναφορά διάγνωσης αποθηκεύτηκε στο: {output_file}")
     print("\n=== Ολοκλήρωση Διάγνωσης ===")
 
 if __name__ == "__main__":
