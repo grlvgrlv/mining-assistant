@@ -1,0 +1,27 @@
+# Core dependencies
+fastapi
+uvicorn
+sqlalchemy
+pydantic
+torch
+transformers
+peft
+httpx
+redis
+python-telegram-bot
+psycopg2-binary
+pytest
+black
+isort
+flake8
+
+# Remove problematic packages
+# apturl has been removed
+# Add any other packages that might cause issues
+
+# Mining and AI specific
+numpy
+pandas
+scikit-learn
+matplotlib
+python-dotenv

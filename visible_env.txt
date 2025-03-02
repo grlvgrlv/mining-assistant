@@ -1,0 +1,19 @@
+# Database Configuration
+DATABASE_URL=postgresql://user:password@localhost:5432/mining_assistant
+
+# API Keys
+CLOREAI_API_KEY=your_cloreai_api_key
+MINING_API_KEY=your_mining_api_key
+ENERGY_API_KEY=your_energy_api_key
+
+# LLM Configuration
+MODEL_PATH=./models/mining-assistant-llm
+DEVICE=cuda
+
+# Server Configuration
+HOST=0.0.0.0
+PORT=8000
+DEBUG=True
+
+# Telegram Bot
+TELEGRAM_BOT_TOKEN=your_telegram_bot_token

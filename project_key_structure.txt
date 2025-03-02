@@ -1,0 +1,37 @@
+/home/grlv/mining-assistant
+├── backend
+│   ├── ai_engine.py
+│   ├── connectors
+│   ├── database.py
+│   ├── main.py
+│   ├── models.py
+│   └── schemas.py
+├── backend_connectors_backup
+│   ├── cloreai_connector.py
+│   ├── energy_connector.py
+│   ├── __init__.py
+│   └── mining_connector.py
+├── data
+├── fix-project.sh
+├── frontend
+│   ├── package.json
+│   └── src
+├── logs
+├── mining-assistant-setup.sh
+├── models
+│   └── mining-assistant-llm
+├── project_key_structure.txt
+├── README.md
+├── requirements.txt
+├── status.py
+├── system_requirements.py
+├── venv
+│   ├── bin
+│   ├── include
+│   ├── lib
+│   ├── lib64 -> lib
+│   ├── pyvenv.cfg
+│   └── share
+└── visible_env.txt
+
+15 directories, 19 files
