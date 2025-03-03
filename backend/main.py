@@ -15,10 +15,13 @@ from backend.schemas import (
     MiningStats, EnergyData, ProfitabilityRequest, ProfitabilityResponse,
     UserCreate, User, MiningConfig, MiningStat, EnergyConsumption, CryptoPrice
 )
-from connectors.mining_connector import MiningConnector
-from connectors.energy_connector import EnergyConnector
-from connectors.cloreai_connector import CloreAIConnector
-from ai_engine import AIEngine
+from backend.connectors.mining_connector import MiningConnector
+from backend.connectors.energy_connector import EnergyConnector
+from backend.connectors.cloreai_connector import CloreAIConnector
+from backend.ai_engine import AIEngine
+
+# Απενεργοποίηση προειδοποιήσεων TensorFlow
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'  # 0=all, 1=no INFO, 2=no WARNING, 3=no ERROR
 
 # Φόρτωση περιβαλλοντικών μεταβλητών
 load_dotenv()
@@ -309,15 +312,15 @@ def create_user(user: UserCreate, db: Session = Depends(get_db)):
     Δημιουργία νέου χρήστη.
     """
     # Έλεγχος αν υπάρχει ήδη χρήστης με το ίδιο email ή username
-    db_user = db.query(User).filter(
-        (User.email == user.email) | (User.username == user.username)
+    from backend.models import User as UserModel
+    db_user = db.query(UserModel).filter(
+        (UserModel.email == user.email) | (UserModel.username == user.username)
     ).first()
     if db_user:
         raise HTTPException(status_code=400, detail="Email ή username ήδη εγγεγραμμένα")
     
     # Δημιουργία και αποθήκευση νέου χρήστη
     # TODO: Να προστεθεί κρυπτογράφηση του password
-    from models import User as UserModel
     db_user = UserModel(
         username=user.username,
         email=user.email,
@@ -333,7 +336,7 @@ def read_user(user_id: int, db: Session = Depends(get_db)):
     """
     Ανάκτηση δεδομένων χρήστη.
     """
-    from models import User as UserModel
+    from backend.models import User as UserModel
     db_user = db.query(UserModel).filter(UserModel.id == user_id).first()
     if db_user is None:
         raise HTTPException(status_code=404, detail="User not found")
@@ -349,4 +352,4 @@ if __name__ == "__main__":
     debug = os.getenv("DEBUG", "False").lower() == "true"
     
     # Εκκίνηση του Uvicorn server
-    uvicorn.run("main:app", host=host, port=port, reload=debug)
+    uvicorn.run("backend.main:app", host=host, port=port, reload=debug)

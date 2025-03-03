@@ -3,6 +3,10 @@
 Μενού επιλογής scripts για το AI Mining Assistant
 Αυτόματα εντοπίζει τα διαθέσιμα scripts στον φάκελο scripts 
 και παρέχει επιλογές για την εκτέλεσή τους.
+
+Υποστηρίζει:
+- Python scripts (.py)
+- Shell scripts (.sh)
 """
 import os
 import sys
@@ -59,20 +63,34 @@ def get_script_description(script_path):
     return description or "(Χωρίς περιγραφή)"
 
 def find_available_scripts(scripts_dir):
-    """Βρίσκει όλα τα διαθέσιμα Python scripts στον φάκελο"""
+    """Βρίσκει όλα τα διαθέσιμα Python scripts και shell scripts στον φάκελο"""
     scripts = []
     
-    # Εύρεση όλων των .py αρχείων
-    script_paths = glob.glob(os.path.join(scripts_dir, "*.py"))
+    # Εύρεση όλων των .py και .sh αρχείων
+    script_paths = glob.glob(os.path.join(scripts_dir, "*.py")) + glob.glob(os.path.join(scripts_dir, "*.sh"))
     
     # Αγνοούμε το τρέχον script (menu.py)
     script_paths = [path for path in script_paths 
-                   if os.path.basename(path).lower() != "menu.py"]
+                   if os.path.basename(path).lower() not in ["menu.py", "startup.sh"]]
     
     # Συλλογή πληροφοριών για κάθε script
     for path in script_paths:
         name = os.path.basename(path)
-        description = get_script_description(path)
+        
+        # Διαφορετική λογική για .py και .sh αρχεία
+        if path.endswith('.py'):
+            description = get_script_description(path)
+        else:  # .sh αρχεία
+            try:
+                with open(path, 'r', encoding='utf-8') as f:
+                    # Διάβασε την πρώτη γραμμή σχολίου μετά το shebang
+                    lines = f.readlines()
+                    description = next((line.strip()[1:].strip() for line in lines 
+                                        if line.strip().startswith('#') and not line.strip().startswith('#!')), 
+                                       "(Χωρίς περιγραφή)")
+            except Exception as e:
+                description = f"(Αδύνατη η ανάγνωση περιγραφής: {str(e)})"
+        
         scripts.append({"name": name, "path": path, "description": description})
     
     # Ταξινόμηση των scripts αλφαβητικά
@@ -80,8 +98,12 @@ def find_available_scripts(scripts_dir):
     return scripts
 
 def run_script(script_path, additional_args=None):
-    """Εκτελεί ένα Python script"""
-    command = [sys.executable, script_path]
+    """Εκτελεί ένα Python script ή shell script"""
+    if script_path.endswith('.py'):
+        command = [sys.executable, script_path]
+    else:  # .sh αρχεία
+        command = ['bash', script_path]
+    
     if additional_args:
         command.extend(additional_args)
     
@@ -93,7 +115,7 @@ def run_script(script_path, additional_args=None):
     except Exception as e:
         print(f"\033[1;31mΣφάλμα κατά την εκτέλεση του script: {e}\033[0m")
         return False
-
+        
 def run_institutional_memory_refresh(scripts_dir, project_base_path):
     """
     Εκτελεί τα scripts με συγκεκριμένη σειρά για ανανέωση institutional memory:
