@@ -1,0 +1,8 @@
+path					script			menu1			menu2
+~/mining-assistant/scripts$ 		collect_code.py		Development Tools
+~/mining-assistant/scripts$		debug_tools.py		Development Tools
+~/mining-assistant/scripts$		fix-project.sh		Development Tools	Problem Solving
+~/mining-assistant/scripts$		startup-script.sh	Startup
+~/mining-assistant/scripts$		status.py		Development Tools
+~/mining-assistant/scripts$		system_requirements.py	Development Tools
+~/mining-assistant/scripts/dashboard$ 	start_dashboard.sh	Startup
