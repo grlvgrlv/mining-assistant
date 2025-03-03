@@ -1,29 +1,10 @@
 #!/usr/bin/env python3
+
 """
-Εργαλείο Ελέγχου Συστημικών Απαιτήσεων για το AI Mining Assistant
-
-Το script πραγματοποιεί έναν ολοκληρωμένο έλεγχο των προαπαιτούμενων συστήματος 
-για την εγκατάσταση και λειτουργία του AI Mining Assistant. 
-
-Βασικοί έλεγχοι:
-1. Έκδοση Python (απαίτηση: 3.9+)
-2. Διαθέσιμη RAM (απαίτηση: 16GB+)
-3. GPU και CUDA συμβατότητα (απαίτηση: NVIDIA GPU με 6GB+ VRAM, CUDA 11.7+)
-4. Έκδοση Node.js (απαίτηση: 16+)
-5. Διαθέσιμος χώρος δίσκου (απαίτηση: 20GB+)
-6. Εγκατεστημένα Python πακέτα
-
-Επιπλέον λειτουργίες:
-- Χρωματιστή εκτύπωση αποτελεσμάτων ελέγχου
-- Δυνατότητα αυτόματης εγκατάστασης λειπόντων πακέτων
-- Αποθήκευση αποτελεσμάτων σε JSON για περαιτέρω ανάλυση
-
-Χρήση:
-- Με το όρισμα 'check': Έλεγχος συστημικών απαιτήσεων
-- Με το όρισμα 'install': Αυτόματη εγκατάσταση λειπόντων πακέτων
+Έλεγχος προαπαιτούμενων συστήματος για το AI Mining Assistant
+Εκτελεί ελέγχους για Python, RAM, GPU, CUDA, Node.js και χώρο δίσκου
 """
 
-# Υπόλοιπος κώδικας παραμένει ο ίδιος
 import sys
 import platform
 import subprocess
@@ -32,7 +13,12 @@ import os
 import re
 import argparse
 import json
+import time
+from datetime import datetime
 from typing import Dict, List, Tuple, Optional
+
+# Απενεργοποίηση προειδοποιήσεων TensorFlow
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 
 class ColorPrint:
     """Κλάση για χρωματισμένη εκτύπωση στο τερματικό."""
@@ -57,6 +43,14 @@ class ColorPrint:
     @staticmethod
     def bold(text: str) -> str:
         return f"{ColorPrint.BOLD}{text}{ColorPrint.END}"
+
+def run_command(command):
+    """Εκτελεί μια εντολή και επιστρέφει το αποτέλεσμα"""
+    try:
+        result = subprocess.run(command, shell=True, capture_output=True, text=True)
+        return result.stdout.strip()
+    except Exception as e:
+        return f"Error: {str(e)}"
 
 def check_python_version() -> Tuple[bool, str]:
     """Έλεγχος έκδοσης Python. Απαιτείται 3.9+."""
@@ -161,10 +155,28 @@ def check_cuda() -> Tuple[bool, str]:
                     else:
                         return False, f"CUDA {version} ✗ (απαιτείται 11.7+)"
                 else:
+                    # Αναζήτηση σε δυναμικές βιβλιοθήκες CUDA
+                    try:
+                        # Επαλήθευση με Python imports
+                        import torch
+                        cuda_version = torch.version.cuda
+                        if cuda_version and float(cuda_version.split('.')[0]) >= 11:
+                            return True, f"CUDA {cuda_version} ✓"
+                    except:
+                        pass
                     return False, "Δεν βρέθηκε έκδοση CUDA ✗"
             else:
                 return False, "Δεν είναι εγκατεστημένο το CUDA ✗"
     except Exception as e:
+        # Backup check with torch
+        try:
+            import torch
+            if torch.cuda.is_available():
+                cuda_version = torch.version.cuda
+                if cuda_version and float(cuda_version.split('.')[0]) >= 11:
+                    return True, f"CUDA {cuda_version} ✓"
+        except:
+            pass
         return False, f"Δεν ήταν δυνατός ο έλεγχος CUDA: {str(e)}"
 
 def check_nodejs() -> Tuple[bool, str]:
@@ -212,19 +224,33 @@ def check_python_packages() -> Tuple[bool, List[str]]:
     required_packages = [
         "fastapi", "uvicorn", "sqlalchemy", "pydantic",
         "torch", "transformers", "peft", "httpx", "redis",
-        "python-telegram-bot"
+        "telegram"  # Αλλάξτε από "python-telegram-bot" σε "telegram"
     ]
     
     missing_packages = []
     
     for package in required_packages:
         try:
-            __import__(package)
+            # Προσπάθεια εισαγωγής του πακέτου
+            module = __import__(package)
+            
+            # Ειδικός έλεγχος για το telegram
+            if package == "telegram":
+                try:
+                    version = module.__version__
+                    print(f"Εντοπίστηκε {package} έκδοσης {version}")
+                except AttributeError:
+                    print(f"Το πακέτο {package} είναι εισαγόμενο αλλά δεν βρέθηκε έκδοση")
+                    missing_packages.append("python-telegram-bot")
         except ImportError:
-            missing_packages.append(package)
+            print(f"Αδυναμία εισαγωγής του πακέτου {package}")
+            if package == "telegram":
+                missing_packages.append("python-telegram-bot")
+            else:
+                missing_packages.append(package)
     
     return len(missing_packages) == 0, missing_packages
-
+    
 def install_missing_packages(packages: List[str]) -> bool:
     """Εγκατάσταση των πακέτων που λείπουν."""
     if not packages:
@@ -239,39 +265,36 @@ def install_missing_packages(packages: List[str]) -> bool:
         return False
 
 def main():
-    print("Εκκίνηση του system_requirements.py...")
+    script_path = os.path.abspath(__file__)
+    script_dir = os.path.dirname(script_path)
+    
+    # Υπολογισμός του project_base_path
+    if os.path.basename(script_dir) == "scripts":
+        # Αν το script είναι στον φάκελο scripts, το project_base_path είναι ο γονικός φάκελος
+        project_base_path = os.path.dirname(script_dir)
+    else:
+        # Αλλιώς, υποθέτουμε ότι το script είναι στο project root
+        project_base_path = os.path.expanduser("~/mining-assistant")
+    
+    # Εξασφάλιση ότι ο φάκελος logs υπάρχει
+    logs_dir = os.path.join(project_base_path, "logs")
+    os.makedirs(logs_dir, exist_ok=True)
+    
+    print(f"Εκκίνηση του system_requirements.py...")
+    print(f"Script path: {script_path}")
+    print(f"Script directory: {script_dir}")
+    print(f"Project base path: {project_base_path}")
+    print(f"Logs directory: {logs_dir}")
+    print(f"Logs directory created/exists: {os.path.exists(logs_dir)}")
+    
+    # Ορισμός της διαδρομής για το αρχείο αποτελεσμάτων
+    results_file = os.path.join(logs_dir, "system_check_results.json")
+
     parser = argparse.ArgumentParser(description="Έλεγχος προαπαιτούμενων συστήματος για το AI Mining Assistant")
     parser.add_argument('action', choices=['check', 'install'], nargs='?', default='check',
                         help="'check' για έλεγχο προαπαιτούμενων, 'install' για εγκατάσταση των πακέτων που λείπουν")
     
     args = parser.parse_args()
-    
-    # Ορισμός των διαδρομών με διαχείριση σφαλμάτων
-    try:
-        script_path = os.path.abspath(__file__)
-        print(f"Script path: {script_path}")
-        
-        script_dir = os.path.dirname(script_path)
-        print(f"Script directory: {script_dir}")
-        
-        project_base_path = os.path.dirname(script_dir) if os.path.basename(script_dir) == "scripts" else os.path.dirname(os.path.dirname(script_path))
-        print(f"Project base path: {project_base_path}")
-        
-        logs_dir = os.path.join(project_base_path, "logs")
-        print(f"Logs directory: {logs_dir}")
-
-        # Δημιουργία του καταλόγου logs αν δεν υπάρχει
-        try:
-            os.makedirs(logs_dir, exist_ok=True)
-            print(f"Logs directory created/exists: {logs_dir}")
-        except Exception as e:
-            print(f"Σφάλμα δημιουργίας logs directory: {e}")
-            logs_dir = os.getcwd()  # Fallback στο τρέχον directory
-            print(f"Χρήση τρέχοντος καταλόγου: {logs_dir}")
-    except Exception as e:
-        print(f"Σφάλμα υπολογισμού διαδρομών: {e}")
-        logs_dir = os.getcwd()  # Fallback στο τρέχον directory
-        print(f"Χρήση τρέχοντος καταλόγου: {logs_dir}")
     
     print(ColorPrint.bold("\n=== Έλεγχος Προαπαιτούμενων Συστήματος ===\n"))
     
@@ -298,6 +321,7 @@ def main():
             print(f"  {i+1}. {gpu['name']} - {gpu['memory']:.2f}GB VRAM - Driver {gpu['driver']}")
     
     # Έλεγχος πακέτων Python
+    time.sleep(1)  # Μικρή καθυστέρηση για να φανούν καλύτερα τα μηνύματα
     packages_ok, missing_packages = check_python_packages()
     
     if packages_ok:
@@ -308,6 +332,8 @@ def main():
         if args.action == 'install':
             if install_missing_packages(missing_packages):
                 print(f"\n{ColorPrint.green('Η εγκατάσταση των πακέτων ολοκληρώθηκε επιτυχώς!')}")
+                packages_ok = True
+                missing_packages = []
             else:
                 print(f"\n{ColorPrint.red('Παρουσιάστηκε σφάλμα κατά την εγκατάσταση των πακέτων.')}")
     
@@ -355,26 +381,22 @@ def main():
         "all_requirements_met": all_ok
     }
     
-    # Αποθήκευση αρχείου με διαχείριση σφαλμάτων
-    try:
-        # Αποθήκευση στο φάκελο logs
-        output_file = os.path.join(logs_dir, 'system_check_results.json')
-        with open(output_file, 'w') as f:
-            json.dump(results, f, indent=2)
-        print(f"\nΤα αποτελέσματα του ελέγχου αποθηκεύτηκαν στο αρχείο '{output_file}'")
-    except Exception as e:
-        print(f"Σφάλμα αποθήκευσης αρχείου στο logs: {e}")
-        try:
-            # Fallback στο τρέχον directory
-            output_file = 'system_check_results.json'
-            with open(output_file, 'w') as f:
-                json.dump(results, f, indent=2)
-            print(f"\nΤα αποτελέσματα του ελέγχου αποθηκεύτηκαν στο αρχείο '{output_file}'")
-        except Exception as e2:
-            print(f"Σφάλμα αποθήκευσης και στο τρέχον directory: {e2}")
+    # Αποθήκευση αποτελεσμάτων
+    with open(results_file, 'w') as f:
+        json.dump(results, f, indent=2)
     
+    print(f"\nΤα αποτελέσματα του ελέγχου αποθηκεύτηκαν στο αρχείο '{results_file}'")
     print("Τέλος εκτέλεσης system_requirements.py")
+    
     return 0 if all_ok else 1
 
 if __name__ == "__main__":
-    sys.exit(main())
+    try:
+        sys.exit(main())
+    except KeyboardInterrupt:
+        print("\nΔιακοπή από τον χρήστη")
+        sys.exit(1)
+    except Exception as e:
+        print(f"Σφάλμα: {str(e)}")
+        traceback.print_exc()
+        sys.exit(1)

@@ -29,22 +29,32 @@ def get_script_description(script_path):
     description = ""
     try:
         with open(script_path, 'r', encoding='utf-8') as f:
-            for line in f:
-                line = line.strip()
-                # Αγνοούμε τις γραμμές shebang και τις κενές γραμμές
-                if line.startswith("#!") or not line:
-                    continue
-                # Παίρνουμε την περιγραφή από το docstring ή από σχόλια
-                if line.startswith('"""') or line.startswith("'''"):
-                    description = line.strip('"""').strip("'''").strip()
+            lines = f.readlines()
+            
+            # Εύρεση του docstring πολλαπλών γραμμών
+            docstring_start = -1
+            for i, line in enumerate(lines):
+                if line.strip().startswith('"""') or line.strip().startswith("'''"):
+                    docstring_start = i
                     break
-                elif line.startswith("#"):
-                    description = line[1:].strip()
-                    break
-                else:
-                    break
-    except Exception:
-        description = "(Αδύνατη η ανάγνωση περιγραφής)"
+            
+            # Αν βρέθηκε docstring πολλαπλών γραμμών
+            if docstring_start >= 0 and docstring_start + 1 < len(lines):
+                # Χρησιμοποιούμε την πρώτη ουσιαστική γραμμή του docstring (συνήθως την 3η του αρχείου)
+                next_line = lines[docstring_start + 1].strip()
+                if next_line:  # Αν δεν είναι κενή γραμμή
+                    description = next_line
+            
+            # Αν δεν βρέθηκε περιγραφή με την παραπάνω μέθοδο
+            if not description:
+                # Προσπαθούμε να βρούμε οποιαδήποτε γραμμή σχολίου
+                for line in lines:
+                    line = line.strip()
+                    if line.startswith("#") and not line.startswith("#!"):
+                        description = line[1:].strip()
+                        break
+    except Exception as e:
+        description = f"(Αδύνατη η ανάγνωση περιγραφής: {str(e)})"
     
     return description or "(Χωρίς περιγραφή)"
 
